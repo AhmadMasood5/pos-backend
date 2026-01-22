@@ -6,7 +6,7 @@ import { generateToken } from '../utils/generateTokens.js';
 
 const router = express.Router();
 
-// Signup route
+// --- SIGNUP ---
 router.post('/signup', async (req, res) => {
   try {
     const { name, email, password, shopName, shopAddress } = req.body;
@@ -31,14 +31,23 @@ router.post('/signup', async (req, res) => {
       status: 'PENDING'
     });
 
-    res.status(201).json({ message: 'User created successfully. Awaiting admin approval.' });
+    res.status(201).json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        shop: user.shop
+      }
+    });
   } catch (err) {
     console.error("Signup error:", err);
     res.status(500).json({ message: 'Internal Error', error: err.message });
   }
 });
 
-// Signin route
+// --- SIGNIN ---
 router.post('/signin', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -46,18 +55,21 @@ router.post('/signin', async (req, res) => {
     const user = await User.findOne({ email }).populate('shop');
     if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
-    const isMatch = await bcrypt.compare(password, user.passwordHash); // ✅ fixed
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
 
     const token = generateToken(user);
 
     res.json({
       token,
-      id: user._id,
-      name: user.name,
-      role: user.role,
-      status: user.status,
-      shop: user.shop
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        shop: user.shop
+      }
     });
   } catch (err) {
     console.error("Signin error:", err);
