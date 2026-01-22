@@ -6,19 +6,26 @@ import { generateToken } from '../utils/generateTokens.js';
 
 const router = express.Router();
 
+// Signup route
 router.post('/signup', async (req, res) => {
   try {
     const { name, email, password, shopName, shopAddress } = req.body;
+
     const existing = await User.findOne({ email });
     if (existing) return res.status(400).json({ message: 'User already exists' });
 
-    const shop = await Shop.create({ name: shopName, address: shopAddress, isActive: false });
+    const shop = await Shop.create({
+      name: shopName,
+      address: shopAddress,
+      isActive: false
+    });
+
     const passwordHash = await bcrypt.hash(password, 10);
 
     const user = await User.create({
       name,
       email,
-      password: passwordHash,
+      passwordHash,   // ✅ matches schema
       shop: shop._id,
       role: 'SHOP_ADMIN',
       status: 'PENDING'
@@ -26,20 +33,24 @@ router.post('/signup', async (req, res) => {
 
     res.status(201).json({ message: 'User created successfully. Awaiting admin approval.' });
   } catch (err) {
+    console.error("Signup error:", err);
     res.status(500).json({ message: 'Internal Error', error: err.message });
   }
 });
 
+// Signin route
 router.post('/signin', async (req, res) => {
   try {
     const { email, password } = req.body;
+
     const user = await User.findOne({ email }).populate('shop');
     if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, user.passwordHash); // ✅ fixed
     if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
 
     const token = generateToken(user);
+
     res.json({
       token,
       id: user._id,
@@ -49,6 +60,7 @@ router.post('/signin', async (req, res) => {
       shop: user.shop
     });
   } catch (err) {
+    console.error("Signin error:", err);
     res.status(500).json({ message: 'Internal Error', error: err.message });
   }
 });
