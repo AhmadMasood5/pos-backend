@@ -6,7 +6,7 @@ export const auth = async (req, res, next) => {
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
 
   if (!token) {
-    return res.status(401).json({ message: 'Access denied, token missing' });
+    return res.status(401).json({ message: 'Unauthorized: token missing' });
   }
 
   try {
@@ -14,13 +14,16 @@ export const auth = async (req, res, next) => {
 
     const user = await User.findById(decoded.id).populate('shop');
     if (!user) {
-      return res.status(401).json({ message: 'Access denied, user not found' });
+      return res.status(401).json({ message: 'Unauthorized: user not found' });
     }
 
     req.user = user;
     next();
   } catch (err) {
-    console.error(err);
-    return res.status(401).json({ message: 'Invalid token' });
+    console.error("Auth error:", err);
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Unauthorized: token expired' });
+    }
+    return res.status(401).json({ message: 'Unauthorized: invalid token' });
   }
 };
